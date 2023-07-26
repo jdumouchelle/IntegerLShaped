@@ -12,5 +12,5 @@ python -m ils.scripts.ils_sslp --problem sslp_5_25 --n_scenarios 50 --test_set s
 
 
 ## References
-- Laporte, G., & Louveaux, F. V. (1993). The integer L-shaped method for stochastic integer programs with complete recourse. ***Operations research letters***, 13(3), 133-142.
-- Angulo, G., Ahmed, S., & Dey, S. S. (2016). Improving the integer L-shaped method. ***INFORMS Journal on Computing***, 28(3), 483-499.
+- Laporte, G., & Louveaux, F. V. (1993). The integer L-shaped method for stochastic integer programs with complete recourse. *Operations research letters*, 13(3), 133-142.
+- Angulo, G., Ahmed, S., & Dey, S. S. (2016). Improving the integer L-shaped method. *INFORMS Journal on Computing*, 28(3), 483-499.
