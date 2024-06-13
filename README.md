@@ -1,4 +1,4 @@
-# Integer L-Shaped
+# An Implementation of the Integer L-Shaped Method
 A Python implementation of the integer L-shaped method for solving two-stage stochastic programs.  Implementation is based on the algorithm outlined in [Angulo 2016], and all of the implementation is done in Python with Gurobi as the MILP solver.  
 
 This repository aims to provide a parallel implementation of the integer L-shaped method by solving the subproblems in parallel. The code is designed using Python multiprocessing, i.e., process-based parallelism, which is ideal computation on a single machine with multiple threads.  In addition, instance generators for the stochastic server location problem (based on the instances from [Ntaimo, 2005]) and stochastic capacitated facility location problem (based on the instances from [Dumouchelle, 2022]) are provided.  
