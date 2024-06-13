@@ -11,4 +11,4 @@ def factory_get_path(problem):
         return get_path
 
     else:
-        raise Exception(f"nsp.utils not defined for problem class {problem}")
+        raise Exception(f"ils.utils not defined for problem class {problem}")

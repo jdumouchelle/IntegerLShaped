@@ -11,4 +11,4 @@ def factory_two_sp(problem, inst, sampler=None):
         return SSLP(inst)
 
     else:
-        raise Exception(f"nsp.utils not defined for problem class {problem}")
+        raise Exception(f"ils.two_sp not defined for problem class {problem}")

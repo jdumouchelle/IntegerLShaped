@@ -10,7 +10,7 @@ class CFLP(TwoStageStocProg):
 
     def __init__(self, inst):
         """ Constructor for CFLP 2SP class. """
-        self.inst = inst
+        super(CFLP, self).__init__(inst)
         self.n_customers = self.inst['n_customers']
         self.n_facilities = self.inst['n_facilities']
         self.integer_second_stage = self.inst['integer_second_stage']
@@ -21,7 +21,7 @@ class CFLP(TwoStageStocProg):
         self.recourse_costs = 2 * np.max([np.max(self.fixed_costs), np.max(self.trans_costs)])
 
 
-    def _make_second_stage_model(self, demands):
+    def make_second_stage_model(self, scenario):
         """ Creates the second stage model. """
         model = gp.Model()
         var_dict = {}
@@ -63,7 +63,7 @@ class CFLP(TwoStageStocProg):
         for i in range(self.n_facilities):
             cons = - self.capacities[i] * var_dict[f"x_{i}"]
             for j in range(self.n_customers):
-                cons += demands[j] * var_dict[f"y_{i}_{j}"]
+                cons += scenario[j] * var_dict[f"y_{i}_{j}"]
             model.addConstr(cons <= 0, name=f"c_{i}")
 
         # bound tightening constraints
@@ -77,13 +77,12 @@ class CFLP(TwoStageStocProg):
         return model
 
 
-    def get_second_stage_objective(self, sol, demands, gap=0.0001, time_limit=1e7, threads=1, verbose=0):
+    def get_second_stage_objective(self, x, scenario, gap=0.0001, time_limit=1e7, threads=1, verbose=0):
         """ Gets the second stage model for an objective. """
-
-        model = self._make_second_stage_model(demands)
+        model = self.make_second_stage_model(scenario)
 
         # fix first stage solution
-        model = self.fix_first_stage(model, sol)
+        model = self.set_first_stage(model, x)
 
         model.setParam("OutputFlag", verbose)
         model.setParam("MIPGap", gap)
@@ -96,90 +95,25 @@ class CFLP(TwoStageStocProg):
         return second_stage_obj
 
 
-    def evaluate_first_stage_sol(self, sol, n_scenarios, gap=0.0001, time_limit=600, threads=1, verbose=0, test_set="0", n_procs=1):
+    def evaluate_first_stage_sol(self, x, n_scenarios, gap=0.0001, time_limit=600, threads=1, verbose=0, test_set="0", n_procs=1):
         """ Gets the objective function value for a given solution. """
-
         scenarios = self.get_scenarios(n_scenarios, test_set)
         n_scenarios = len(scenarios)
         scenario_prob = 1 / len(scenarios)
 
-        # evaluate first stage values
-        first_stage_obj_val = 0
-        for i in range(self.n_facilities):
-            first_stage_obj_val += sol[f"x_{i}"] * self.fixed_costs[i]
+        # get first-stage objective
+        first_stage_obj_val = np.dot(x, self.fixed_costs)
 
-        with Manager() as manager:
+        # get second-stage objective
+        pool = Pool(n_procs)
+        results = [pool.apply_async(self.get_second_stage_obj_worker, args=(x, scenario, scenario_prob, gap, time_limit, threads, verbose)) for scenario in scenarios]
+        results = [r.get() for r in results]
+        pool.close()
+        pool.join()
 
-            mp_list = manager.list()
-
-            pool = Pool(n_procs)
-            for demand in scenarios:
-                pool.apply_async(self.mp_get_second_stage_obj,
-                                 args=(sol, demand, scenario_prob, gap, time_limit, verbose, mp_list))
-            pool.close()
-            pool.join()
-
-            second_stage_costs = list(mp_list)
-
-        second_stage_obj_val = np.sum(second_stage_costs)
+        second_stage_obj_val = np.sum(results)
 
         return first_stage_obj_val + second_stage_obj_val
-
-
-    def mp_get_second_stage_obj(self, sol, demand, scenario_prob, gap, time_limit, verbose, mp_list):
-        """ Multiprocessing """
-        second_stage_obj = scenario_prob * self.get_second_stage_objective(sol, demand, gap=gap, time_limit=time_limit,
-                                                                           verbose=verbose)
-        mp_list.append(second_stage_obj)
-
-
-    def get_scenario_optimal_first_stage(self, demands, gap=0.0001, time_limit=1e7, threads=1, verbose=0):
-        """ Gets the first stage optimal solution for scenario. """
-        model = self._make_second_stage_model(demands)
-        model.setParam("OutputFlag", verbose)
-        model.setParam("MIPGap", gap)
-        model.setParam("TimeLimit", time_limit)
-        model.setParam("Threads", threads)
-        model.optimize()
-
-        # recover first stage solution and second stage objective value
-        sol = self.get_first_stage_solution(model)
-        second_stage_obj = self.get_second_stage_cost(model)
-
-        return sol, second_stage_obj
-
-
-    def fix_first_stage(self, model, sol):
-        """ Fixes the first stage solution of a given model. """
-        for sol_var_name, sol_var_val in sol.items():
-            model.getVarByName(sol_var_name).lb = sol_var_val
-            model.getVarByName(sol_var_name).ub = sol_var_val
-        model.update()
-        return model
-
-
-    def get_second_stage_cost(self, model):
-        """ Gets the second stage cost of a given model.  """
-        second_stage_obj = 0
-        for var in model.getVars():
-            if "x" not in var.varName:
-                second_stage_obj += var.obj * var.x
-        return second_stage_obj
-
-
-    def get_first_stage_solution(self, model):
-        """ Recovers the first stage solution.  """
-        sol = {}
-        for var in model.getVars():
-            if "x" not in var.varName:
-                continue
-            sol[var.varName] = var.x
-        return sol
-
-
-    def get_first_stage_extensive_solution(self, model):
-        """ Gets the first stage solution for the extensive model.  """
-        return self.get_first_stage_solution(model)
 
 
     def get_scenarios(self, n_scenarios, test_set):
@@ -192,3 +126,43 @@ class CFLP(TwoStageStocProg):
             scenarios.append(rng.randint(5, 35 + 1, size=self.n_customers))
 
         return scenarios
+
+
+    def set_first_stage(self, model, x):
+        """ Fixes the first stage solution of a given model. """
+        for var in model.getVars():
+            if "x_" in var.varName:
+                idx = int(var.varName.split("_")[-1])
+                var.ub = x[idx-1]
+                var.lb = x[idx-1]
+        model.update()
+        return model
+
+
+    def set_first_stage(self, model, x):
+        """ Fixes the first stage solution of a given model. """
+        for var in model.getVars():
+            if "x_" in var.varName:
+                idx = int(var.varName.split("_")[-1])
+                model.getVarByName(var.varName).lb = x[idx]
+                model.getVarByName(var.varName).ub = x[idx]
+        model.update()
+        return model
+
+
+    def get_second_stage_obj_worker(self, x, scenario, scenario_prob, gap, time_limit, threads, verbose):
+        """ Multiprocessing for getting second-stage objective. """
+        second_stage_obj = scenario_prob * self.get_second_stage_objective(x, scenario, gap=gap, time_limit=time_limit, verbose=verbose)
+        return second_stage_obj
+
+
+    def get_second_stage_cost(self, model):
+        """ Gets the second stage cost of a given model.  """
+        second_stage_obj = 0
+        for var in model.getVars():
+            if "x" not in var.varName:
+                second_stage_obj += var.obj * var.x
+        return second_stage_obj
+
+
+

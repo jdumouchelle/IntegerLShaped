@@ -4,6 +4,20 @@ from argparse import ArgumentParser
 from ils.instance_generators import factory_instance_generator
 from ils.utils import factory_get_path
 
+
+
+#---------------------------------------------------------#
+#                                                         #  
+#     File to generate instance and save as .pkl files    #
+#                                                         #   
+#---------------------------------------------------------#
+
+
+
+#-------------------------------------------#
+#              Helper functions             #
+#-------------------------------------------#
+
 def get_generator_params(args):
     """ Gets params based on specified problem. """
     if 'cflp' in args.problem:
@@ -40,6 +54,10 @@ def get_generator_params(args):
     return params
 
 
+
+#-------------------------------------------#
+#                   Main                    #
+#-------------------------------------------#
 
 def main(args):
     print(args.problem)

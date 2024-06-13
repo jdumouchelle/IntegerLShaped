@@ -70,10 +70,3 @@ class CFLPGenerator(InstanceGenerator):
                               * 10 * inst['demands'].reshape((-1, 1))
         inst['trans_costs'] = inst['trans_costs'].transpose()
 
-
-    # @staticmethod
-    # def _sample_n_scenarios(n, inst, rng):
-    #     scenarios = []
-    #     for _ in range(n):
-    #         scenarios.append(rng.randint(5, 35 + 1, size=inst['n_customers']))
-    #     return scenarios

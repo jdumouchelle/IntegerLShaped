@@ -35,6 +35,9 @@ class SSLPGenerator(InstanceGenerator):
 
         return inst
 
+    #-----------------------------------------------------#
+    #       SIPLIB Instance reading functions.            #
+    #-----------------------------------------------------#
 
     @staticmethod
     def _create_siplib_lp_files(inst, data_path):
@@ -49,7 +52,7 @@ class SSLPGenerator(InstanceGenerator):
 
             # create .mps file if it does not exist
             if not os.path.isfile(lp_smps_file):
-                f_content = [f"{lp_file_prefix}.cor\n", f"{lp_file_prefix}.tim\n", f"{lp_file_prefix}.sto"]
+                f_content = [f"{sslp_instance}.cor\n", f"{sslp_instance}.tim\n", f"{sslp_instance}.sto"]
                 with open(lp_smps_file, 'w') as f:
                     f.writelines(f_content)
 
@@ -188,9 +191,11 @@ class SSLPGenerator(InstanceGenerator):
             inst['siplib_scenario_dict'][sslp_instance] = clients_active
 
 
-##
-# Some utilitiy functions for collecting data from the constraint matrix
-##
+
+
+#--------------------------------------------------------------------------------------------------#
+#               Some utilitiy functions for collecting data from the constraint matrix             #
+#--------------------------------------------------------------------------------------------------#
 
 def is_fs_constr(model, constr, x_vars, n_locations):
     for location_index in range(n_locations):
@@ -199,10 +204,8 @@ def is_fs_constr(model, constr, x_vars, n_locations):
     return True
 
 
-
 def is_client_constr(constr):
     return constr.sense == '='
-
 
 
 def get_client_constr_rhs(model, constr, y_vars, n_locations, n_clients):
@@ -218,10 +221,8 @@ def get_client_constr_rhs(model, constr, y_vars, n_locations, n_clients):
     return scenario, client, rhs
 
 
-
 def is_demand_constr(constr):
     return constr.sense == '>' and constr.rhs == 0
-
 
 
 def get_demand_constr_data(model, constr, x_vars, y_vars, r_vars, n_locations, n_clients):
